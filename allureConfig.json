@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/allure-framework/allure-csharp/2.12.1/Allure.Reporting/Schemas/allureConfig.schema.json",
+  "allure": {
+    "title": "IDT_Task: automationexercise.com",
+    "directory": "allure-results",
+    "failExceptions": [
+      "NUnit.Framework.AssertionException",
+      "Microsoft.Playwright.PlaywrightException"
+    ],
+    "links": []
+  }
+}

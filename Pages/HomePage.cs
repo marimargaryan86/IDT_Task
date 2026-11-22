@@ -1,3 +1,5 @@
+using Allure.Net.Commons.Attributes;
+using IDT_Task.Support;
 using Microsoft.Playwright;
 
 namespace IDT_Task.Pages;
@@ -9,5 +11,10 @@ public class HomePage : BasePage
     public ILocator HeroHeading =>
         Page.Locator("#slider-carousel h2", new() { HasText = "Full-Fledged practice website for Automation Engineers" }).First;
 
-    public async Task OpenAsync() => await Page.GotoAsync("/");
+    [AllureStep("Open the home page")]
+    public async Task<HomePage> OpenAsync()
+    {
+        await Page.GotoAsync(Routes.Home);
+        return this;
+    }
 }

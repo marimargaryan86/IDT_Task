@@ -1,16 +1,19 @@
+using Allure.Net.Commons;
+using Allure.NUnit;
 using Microsoft.Playwright;
-using Microsoft.Playwright.MSTest;
+using Microsoft.Playwright.NUnit;
 
 namespace IDT_Task.Support;
 
 /// <summary>
-/// Shared setup: base URL and blocking of ad/tracker requests (ads overlay the site and steal clicks).
-/// Headed run: HEADED=1 dotnet test
+/// Shared setup: base URL and viewport from <see cref="Settings"/>, optional blocking of ad/tracker requests
+/// (ads overlay the site and steal clicks), and failure evidence (trace zip, screenshot, failed requests,
+/// console errors), which is also attached to the Allure report. Browser, headless and slow-motion come from
+/// .runsettings, or BROWSER / HEADED. [AllureNUnit] on this class applies to every test class that inherits it.
 /// </summary>
+[AllureNUnit]
 public abstract class BaseTest : PageTest
 {
-    public const string BaseUrl = "https://automationexercise.com";
-
     private static readonly string[] BlockedHosts =
     {
         "googlesyndication.com", "doubleclick.net", "googleadservices.com",
@@ -18,31 +21,101 @@ public abstract class BaseTest : PageTest
         "pagead2.", "adsbygoogle", "amazon-adsystem.com", "adnxs.com"
     };
 
+    private readonly List<string> _diagnostics = new();
+    private Settings? _config;
+
+    protected Settings Config => _config ??= Settings.Load();
+
     public override BrowserNewContextOptions ContextOptions() => new()
     {
-        BaseURL = BaseUrl,
-        ViewportSize = new ViewportSize { Width = 1440, Height = 900 },
+        BaseURL = Config.BaseUrl,
+        ViewportSize = new ViewportSize { Width = Config.ViewportWidth, Height = Config.ViewportHeight },
     };
 
-    [TestCleanup]
-    public async Task ScreenshotOnFailure()
+    /// <summary>An API client for creating and deleting users, pointed at the configured site.</summary>
+    protected Task<AccountApi> CreateAccountApiAsync() => AccountApi.CreateAsync(Playwright, Config.BaseUrl);
+
+    [SetUp]
+    public async Task SetUpPage()
     {
-        if (TestContext.CurrentTestOutcome == UnitTestOutcome.Passed) return;
-        Directory.CreateDirectory("TestResults/screenshots");
-        await Page.ScreenshotAsync(new() { Path = $"TestResults/screenshots/{TestContext.TestName}.png" });
-        Console.WriteLine($"URL at failure: {Page.Url}");
+        _diagnostics.Clear(); // one instance serves every test of a class, so start each test empty
+
+        Page.SetDefaultTimeout(Config.ActionTimeoutMs);
+        Page.SetDefaultNavigationTimeout(Config.ActionTimeoutMs);
+
+        await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+
+        if (Config.BlockAds)
+        {
+            // Second line of defence: if a vignette ad gets through anyway, remove it when it blocks a click.
+            await AdOverlay.InstallAsync(Page);
+
+            await Context.RouteAsync("**/*", async route =>
+            {
+                if (IsBlocked(route.Request.Url))
+                    await route.AbortAsync();
+                else
+                    await route.ContinueAsync();
+            });
+        }
+
+        // Evidence for failures. Requests we block on purpose are not reported.
+        Page.RequestFailed += (_, r) =>
+        {
+            if (!IsBlocked(r.Url))
+                _diagnostics.Add($"{Stamp()} REQUEST FAILED {r.Method} {r.Url} ({r.Failure})");
+        };
+        Page.Response += (_, r) =>
+        {
+            if (r.Status >= 400)
+                _diagnostics.Add($"{Stamp()} HTTP {r.Status} {r.Request.Method} {r.Url}");
+        };
+        Page.Console += (_, m) =>
+        {
+            if (m.Type == "error")
+                _diagnostics.Add($"{Stamp()} CONSOLE ERROR {m.Text}");
+        };
+        Page.PageError += (_, e) => _diagnostics.Add($"{Stamp()} PAGE ERROR {e}");
     }
 
-    [TestInitialize]
-    public async Task BlockAds()
+    [TearDown]
+    public async Task CollectEvidence()
     {
-        await Context.RouteAsync("**/*", async route =>
+        // If the browser never started (launch failed), there is nothing to collect and no context to stop;
+        // returning here keeps the original setup error visible instead of a NullReferenceException.
+        if (Context is null || Page is null) return;
+
+        var failed = TestContext.CurrentContext.Result.Outcome.Status != NUnit.Framework.Interfaces.TestStatus.Passed;
+        if (!failed)
         {
-            var url = route.Request.Url;
-            if (BlockedHosts.Any(h => url.Contains(h, StringComparison.OrdinalIgnoreCase)))
-                await route.AbortAsync();
-            else
-                await route.ContinueAsync();
-        });
+            await Context.Tracing.StopAsync(); // discard
+            return;
+        }
+
+        var dir = Path.GetFullPath("TestResults");
+        Directory.CreateDirectory(Path.Combine(dir, "traces"));
+        Directory.CreateDirectory(Path.Combine(dir, "screenshots"));
+        var name = TestContext.CurrentContext.Test.Name;
+        var stamp = DateTime.Now.ToString("HHmmss");
+
+        await Page.ScreenshotAsync(new() { Path = Path.Combine(dir, "screenshots", $"{name}-{stamp}.png") });
+        var trace = Path.Combine(dir, "traces", $"{name}-{stamp}.zip");
+        await Context.Tracing.StopAsync(new() { Path = trace });
+
+        var report = $"URL at failure: {Page.Url}{Environment.NewLine}Trace: {trace}{Environment.NewLine}" +
+                     string.Join(Environment.NewLine, _diagnostics);
+        TestContext.Out.WriteLine(report);
+
+        // Same evidence in the Allure report, next to the failed step.
+        AllureApi.AddAttachment("Screenshot at failure", "image/png",
+            Path.Combine(dir, "screenshots", $"{name}-{stamp}.png"));
+        AllureApi.AddAttachment("Playwright trace (open with show-trace)", "application/zip", trace);
+        // The URL and the HTTP / console errors (the `report` text above) reach Allure on their own, as the
+        // "Console Output" attachment, because they are written with TestContext.Out.
     }
+
+    private static bool IsBlocked(string url) =>
+        BlockedHosts.Any(h => url.Contains(h, StringComparison.OrdinalIgnoreCase));
+
+    private static string Stamp() => DateTime.Now.ToString("HH:mm:ss.fff");
 }

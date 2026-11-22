@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Default run configuration. dotnet test picks this file up automatically (see IDT_Task.csproj).
+  This file is the single place for every value. An environment variable overrides a value for one run.
+  The TestRunParameters have no defaults in code: a missing one stops the run with a message naming it.
+  Environment variables: BROWSER, HEADED (Playwright's own), and IDT_BASE_URL, IDT_VIEWPORT_WIDTH,
+  IDT_VIEWPORT_HEIGHT, IDT_ACTION_TIMEOUT_MS, IDT_BLOCK_ADS (this project's).
+-->
+<RunSettings>
+
+  <!-- Read by Playwright's NUnit package. -->
+  <Playwright>
+    <!-- chromium | firefox | webkit. BROWSER=<name> overrides this. Chromium is the same engine as
+         Chrome and Edge. -->
+    <BrowserName>chromium</BrowserName>
+    <!-- Timeout for Expect(...) assertions, in ms -->
+    <ExpectTimeout>10000</ExpectTimeout>
+    <LaunchOptions>
+      <!-- true = no browser window. HEADED=1 shows the browser for one run. -->
+      <Headless>true</Headless>
+      <!-- Slow every action down by this many ms, for watching a run. 0 = off. -->
+      <SlowMo>0</SlowMo>
+      <!-- Fail fast if the browser does not start (Playwright's default is 180000) -->
+      <Timeout>60000</Timeout>
+    </LaunchOptions>
+  </Playwright>
+
+  <!-- Read by NUnit. How many test classes run at the same time (see Support/AssemblyConfig.cs).
+       1 = sequential. The site returns 503 under load, so more workers can mean more flaky failures. -->
+  <NUnit>
+    <NumberOfTestWorkers>4</NumberOfTestWorkers>
+  </NUnit>
+
+  <!-- Read by this project (Support/Settings.cs). -->
+  <TestRunParameters>
+    <Parameter name="BaseUrl" value="https://automationexercise.com" />
+    <Parameter name="ViewportWidth" value="1440" />
+    <Parameter name="ViewportHeight" value="900" />
+    <!-- Timeout for actions and navigation (click, fill, goto), in ms -->
+    <Parameter name="ActionTimeoutMs" value="30000" />
+    <!-- Abort ad and tracker requests; the site's ads can cover the page -->
+    <Parameter name="BlockAds" value="true" />
+  </TestRunParameters>
+
+</RunSettings>

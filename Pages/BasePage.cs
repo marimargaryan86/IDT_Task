@@ -1,31 +1,31 @@
+using Allure.Net.Commons.Attributes;
+using IDT_Task.Components;
 using Microsoft.Playwright;
 
 namespace IDT_Task.Pages;
 
-/// <summary>Elements shared by every page: top nav and footer. No assertions here.</summary>
+/// <summary>
+/// Base for every page: the shared Header and Footer components and the 'scroll up' arrow. No assertions here.
+/// Actions that lead to another page return that page, so a test reads as a flow.
+/// </summary>
 public abstract class BasePage
 {
     protected readonly IPage Page;
 
-    protected BasePage(IPage page) => Page = page;
+    protected BasePage(IPage page)
+    {
+        Page = page;
+        Header = new HeaderComponent(page);
+        Footer = new FooterComponent(page);
+    }
 
-    // Header
-    public ILocator LoggedInAs => Page.Locator("a:has-text('Logged in as')");
-    public ILocator SignupLoginLink => Page.Locator("header a[href='/login']");
-    public ILocator ProductsLink => Page.Locator("header a[href='/products']");
-    public ILocator CartLink => Page.Locator("header a[href='/view_cart']");
-    public ILocator DeleteAccountLink => Page.Locator("header a[href='/delete_account']");
+    public HeaderComponent Header { get; }
+    public FooterComponent Footer { get; }
 
-    // Footer
-    public ILocator SubscriptionHeading => Page.Locator("footer").GetByRole(AriaRole.Heading, new() { Name = "Subscription" });
+    /// <summary>The 'scroll up' arrow at the bottom right. The site's scrollUp plugin adds it to the page and
+    /// fades it in only after the page is scrolled down.</summary>
+    public ILocator ScrollUpArrow => Page.Locator("#scrollUp");
 
-    public async Task ClickSignupLoginAsync() => await SignupLoginLink.ClickAsync();
-    public async Task ClickProductsAsync() => await ProductsLink.ClickAsync();
-    public async Task ClickCartAsync() => await CartLink.ClickAsync();
-    public async Task ClickDeleteAccountAsync() => await DeleteAccountLink.ClickAsync();
-
-    public async Task ScrollToFooterAsync() => await Page.Locator("footer").ScrollIntoViewIfNeededAsync();
-
-    /// <summary>Scrolls with the page's own scrolling (no 'scroll up' arrow button).</summary>
-    public async Task ScrollToTopAsync() => await Page.EvaluateAsync("window.scrollTo(0, 0)");
+    [AllureStep("Click the 'scroll up' arrow")]
+    public async Task ClickScrollUpArrowAsync() => await ScrollUpArrow.ClickAsync();
 }

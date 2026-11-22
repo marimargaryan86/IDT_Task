@@ -1,34 +1,25 @@
+using Allure.Net.Commons.Attributes;
 using IDT_Task.Pages;
 using IDT_Task.Support;
 
 namespace IDT_Task.Tests;
 
-[TestClass]
+[TestFixture]
+[AllureFeature("Navigation")]
 public class ScrollTests : BaseTest
 {
-    [TestMethod]
-    public async Task ScrollUp_WithoutArrowButton()
+    [Test]
+    [AllureName("Test Case 25: Verify Scroll Up using 'Arrow' button and Scroll Down functionality")]
+    [Description("automationexercise.com Test Case 25")]
+    public async Task TC25_ScrollUpUsingArrow_AndScrollDown()
     {
-        var home = new HomePage(Page);
+        var home = await new HomePage(Page).OpenAsync();
+        await Expect(home.HeroHeading).ToBeVisibleAsync();
 
-        await home.OpenAsync();
-        await home.ScrollToFooterAsync();
-        await Expect(home.SubscriptionHeading).ToBeVisibleAsync();
+        await home.Footer.ScrollIntoViewAsync();
+        await Expect(home.Footer.SubscriptionHeading).ToBeInViewportAsync();
 
-        // No click on the 'scroll up' arrow: use the page's own scroll.
-        await home.ScrollToTopAsync();
+        await home.ClickScrollUpArrowAsync();
         await Expect(home.HeroHeading).ToBeInViewportAsync();
-    }
-
-    [TestMethod]
-    public async Task ScrollDown_ShowsSubscription()
-    {
-        var home = new HomePage(Page);
-
-        await home.OpenAsync();
-        await Expect(home.HeroHeading).ToBeInViewportAsync();
-
-        await home.ScrollToFooterAsync();
-        await Expect(home.SubscriptionHeading).ToBeInViewportAsync();
     }
 }

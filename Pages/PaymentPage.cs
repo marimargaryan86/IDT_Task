@@ -1,3 +1,4 @@
+using Allure.Net.Commons.Attributes;
 using IDT_Task.Support;
 using Microsoft.Playwright;
 
@@ -9,13 +10,21 @@ public class PaymentPage : BasePage
 
     public ILocator OrderPlaced => Page.Locator("[data-qa='order-placed']");
 
+    private ILocator NameOnCard => Page.Locator("[data-qa='name-on-card']");
+    private ILocator CardNumber => Page.Locator("[data-qa='card-number']");
+    private ILocator Cvc => Page.Locator("[data-qa='cvc']");
+    private ILocator ExpiryMonth => Page.Locator("[data-qa='expiry-month']");
+    private ILocator ExpiryYear => Page.Locator("[data-qa='expiry-year']");
+    private ILocator PayButton => Page.Locator("[data-qa='pay-button']");
+
+    [AllureStep("Pay with the test card")]
     public async Task PayAsync()
     {
-        await Page.Locator("[data-qa='name-on-card']").FillAsync(TestData.CardName);
-        await Page.Locator("[data-qa='card-number']").FillAsync(TestData.CardNumber);
-        await Page.Locator("[data-qa='cvc']").FillAsync(TestData.CardCvc);
-        await Page.Locator("[data-qa='expiry-month']").FillAsync(TestData.CardExpiryMonth);
-        await Page.Locator("[data-qa='expiry-year']").FillAsync(TestData.CardExpiryYear);
-        await Page.Locator("[data-qa='pay-button']").ClickAsync();
+        await NameOnCard.FillAsync(TestData.CardName);
+        await CardNumber.FillAsync(TestData.CardNumber);
+        await Cvc.FillAsync(TestData.CardCvc);
+        await ExpiryMonth.FillAsync(TestData.CardExpiryMonth);
+        await ExpiryYear.FillAsync(TestData.CardExpiryYear);
+        await PayButton.ClickAsync();
     }
 }
