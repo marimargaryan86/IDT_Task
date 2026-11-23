@@ -10,11 +10,9 @@ public class ProductsPage : BasePage
     public ILocator AllProductsHeading => Page.GetByRole(AriaRole.Heading, new() { Name = "All Products" });
     public ILocator SearchedProductsHeading => Page.GetByRole(AriaRole.Heading, new() { Name = "Searched Products" });
     public ILocator ProductCards => Page.Locator(".features_items .product-image-wrapper");
+    public ILocator ProductNames => ProductCards.Locator(".productinfo p");
 
     // The site has no data-qa on this page: ids first, then CSS classes.
-    /// <summary>Names of the products added by <see cref="AddProductsToCartAsync"/>, in the order added.</summary>
-    public List<string> AddedProductNames { get; } = new();
-
     private ILocator SearchInput => Page.Locator("#search_product");
     private ILocator SearchButton => Page.Locator("#submit_search");
     private ILocator AddToCartOnHover(ILocator card) => card.Locator(".product-overlay a.add-to-cart");
@@ -34,19 +32,22 @@ public class ProductsPage : BasePage
     /// <summary>
     /// Adds the first <paramref name="count"/> products to the cart. For each one: hover the card (the add
     /// button only shows on hover), click Add to cart, then close the "Added!" pop-up with Continue Shopping.
+    /// Stays on the products page.
     /// </summary>
+    /// <returns>The names of the added products, in the order they were added.</returns>
     [AllureStep("Add {count} products to the cart")]
-    public async Task<ProductsPage> AddProductsToCartAsync(int count)
+    public async Task<IReadOnlyList<string>> AddProductsToCartAsync(int count)
     {
+        var added = new List<string>();
         for (var i = 0; i < count; i++)
         {
             var card = ProductCards.Nth(i);
-            AddedProductNames.Add((await card.Locator(".productinfo p").First.InnerTextAsync()).Trim());
+            added.Add((await ProductNames.Nth(i).InnerTextAsync()).Trim());
             await card.HoverAsync();
             await AddToCartOnHover(card).ClickAsync();
             await ContinueShoppingButton.ClickAsync();
             await CartModal.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
         }
-        return this;
+        return added;
     }
 }

@@ -35,7 +35,8 @@ for that: repository Settings, Pages, Source: GitHub Actions.
   times out waiting for a page, and the output shows an `HTTP 503` line next to the failure screenshot and trace.
 - **How to tell it from a real defect:** re-run. A site hiccup passes on the next run; a real defect fails the
   same way every time, at the same step. The run on GitHub can be repeated with **Re-run failed jobs**.
-- **What is retried:** only the API calls that create and delete test users (`Support/AccountApi.cs`, on 5xx).
+- **What is retried:** only the site's API calls, on 5xx (`Support/ApiClient.cs`): creating and deleting test
+  users, and the product search that TC09 uses as its expected result.
   Page loads and assertions are never retried, so a failing assertion is never hidden.
 
 ## Scenarios
@@ -49,8 +50,13 @@ steps. In the Allure report each test is named after its case.
 | 16 | Place Order: Login before Checkout | `PlaceOrderLoginBeforeCheckoutTests.TC16_PlaceOrder_LoginBeforeCheckout` |
 | 25 | Verify Scroll Up using 'Arrow' button and Scroll Down functionality | `ScrollTests.TC25_ScrollUpUsingArrow_AndScrollDown` |
 
-Case 16 needs an existing account: the test creates one through the site's API first, runs the case (which
-ends by deleting the account in the UI) and deletes it through the API only if the UI step did not get there.
+- **Case 9** checks the search result against the site's own search API (`/api/searchProduct`): the page must
+  list exactly the products the API returns, in the same order, all visible. The site matches on category as
+  well as name, so the search term alone cannot say which products belong.
+- **Case 16** needs an existing account, so the test creates one through the API first.
+- **Test users** come from `BaseTest` (`NewTestUser()` for the UI sign-up in case 1, `CreateTestUserViaApiAsync()`
+  for case 16). Cases 1 and 16 end by deleting the account in the UI; after every test `BaseTest` deletes any
+  test user that is still there through the API, so a failed test never leaves an account behind.
 
 ## Structure
 - `Pages/`: page objects. Locators are properties at the top (data-qa first where the site has it);
@@ -58,7 +64,8 @@ ends by deleting the account in the UI) and deletes it through the API only if t
 - `Components/`: `HeaderComponent`, `FooterComponent`, shared by every page through `BasePage`.
 - `Tests/`: steps and assertions.
 - `Support/`: `BaseTest` (setup, ad blocking, failure evidence), `Settings` (configuration), `TestData`,
-  `Routes`, `AccountApi` (create/delete users through the site's API, with retry on 5xx).
+  `Routes`, and the API layer: `ApiClient` (shared base: retry on 5xx, JSON response checks), `AccountApi`
+  (create/delete users) and `ProductApi` (product search, the expected data for case 9).
 
 ### Ads
 The site shows ads that can cover the page. `BaseTest` blocks ad and tracker requests first (turn off with

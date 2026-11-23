@@ -13,33 +13,10 @@ public class PlaceOrderLoginBeforeCheckoutTests : BaseTest
     [Description("automationexercise.com Test Case 16")]
     public async Task TC16_PlaceOrder_LoginBeforeCheckout()
     {
-        var user = TestData.RandomUser();
+        // Precondition: an existing account, created through the API (not the sign-up UI). The case deletes it
+        // in the UI at the end; BaseTest deletes it afterwards if the case did not get that far.
+        var user = await CreateTestUserViaApiAsync();
 
-        // Precondition: an existing account, created through the API (not the sign-up UI).
-        await using var api = await CreateAccountApiAsync();
-        await api.CreateAccountAsync(user);
-        try
-        {
-            await RunScenarioAsync(user);
-        }
-        finally
-        {
-            // Safety net: the scenario deletes the account through the UI. If it failed before that, remove it
-            // through the API. "Account not found" is fine: the UI already deleted it.
-            // A cleanup failure is logged, not thrown: throwing here would replace the scenario's own exception.
-            try
-            {
-                await api.DeleteAccountAsync(user, allowMissing: true);
-            }
-            catch (Exception ex)
-            {
-                TestContext.Out.WriteLine($"Cleanup failed, account {user.Email} may be left on the site: {ex.Message}");
-            }
-        }
-    }
-
-    private async Task RunScenarioAsync(User user)
-    {
         // Login before checkout
         var home = await new HomePage(Page).OpenAsync();
         await Expect(home.HeroHeading).ToBeVisibleAsync();
@@ -52,11 +29,11 @@ public class PlaceOrderLoginBeforeCheckoutTests : BaseTest
 
         // Add products, then open the cart from the header
         var products = await home.Header.ClickProductsAsync();
-        await products.AddProductsToCartAsync(TestData.ProductsToOrder);
+        var added = await products.AddProductsToCartAsync(TestData.ProductsToOrder);
         var cart = await products.Header.ClickCartAsync();
         await Expect(cart.ShoppingCartBreadcrumb).ToBeVisibleAsync();
         await Expect(cart.CartRows).ToHaveCountAsync(TestData.ProductsToOrder);
-        await Expect(cart.CartProductNames).ToHaveTextAsync(products.AddedProductNames); // the products we added
+        await Expect(cart.CartProductNames).ToHaveTextAsync(added); // the products we added
 
         // Checkout
         var checkout = await cart.ProceedToCheckoutAsync();

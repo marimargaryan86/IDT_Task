@@ -13,31 +13,10 @@ public class RegisterUserTests : BaseTest
     [Description("automationexercise.com Test Case 1")]
     public async Task TC01_RegisterUser()
     {
-        var user = TestData.RandomUser();
+        // The test signs this user up through the UI. BaseTest deletes it afterwards if the UI delete at the end
+        // of the case did not happen.
+        var user = NewTestUser();
 
-        try
-        {
-            await RunScenarioAsync(user);
-        }
-        finally
-        {
-            // Safety net: if the UI delete failed (or the test stopped early), remove the account through
-            // the API. "Account not found" is fine: it means the UI already deleted it or it was never created.
-            // A cleanup failure is logged, not thrown: throwing here would replace the scenario's own exception.
-            try
-            {
-                await using var api = await CreateAccountApiAsync();
-                await api.DeleteAccountAsync(user, allowMissing: true);
-            }
-            catch (Exception ex)
-            {
-                TestContext.Out.WriteLine($"Cleanup failed, account {user.Email} may be left on the site: {ex.Message}");
-            }
-        }
-    }
-
-    private async Task RunScenarioAsync(User user)
-    {
         var home = await new HomePage(Page).OpenAsync();
         await Expect(home.HeroHeading).ToBeVisibleAsync();
 

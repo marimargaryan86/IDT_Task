@@ -9,7 +9,9 @@ namespace IDT_Task.Support;
 /// Shared setup: base URL and viewport from <see cref="Settings"/>, optional blocking of ad/tracker requests
 /// (ads overlay the site and steal clicks), and failure evidence (trace zip, screenshot, failed requests,
 /// console errors), which is also attached to the Allure report. Browser, headless and slow-motion come from
-/// .runsettings, or BROWSER / HEADED. [AllureNUnit] on this class applies to every test class that inherits it.
+/// .runsettings, or BROWSER / HEADED. Test users made with <see cref="NewTestUser"/> or
+/// <see cref="CreateTestUserViaApiAsync"/> are deleted through the API after every test.
+/// [AllureNUnit] on this class applies to every test class that inherits it.
 /// </summary>
 [AllureNUnit]
 public abstract class BaseTest : PageTest
@@ -22,6 +24,7 @@ public abstract class BaseTest : PageTest
     };
 
     private readonly List<string> _diagnostics = new();
+    private readonly List<User> _testUsers = new();
     private Settings? _config;
 
     protected Settings Config => _config ??= Settings.Load();
@@ -35,10 +38,35 @@ public abstract class BaseTest : PageTest
     /// <summary>An API client for creating and deleting users, pointed at the configured site.</summary>
     protected Task<AccountApi> CreateAccountApiAsync() => AccountApi.CreateAsync(Playwright, Config.BaseUrl);
 
+    /// <summary>An API client for reading products, pointed at the configured site.</summary>
+    protected Task<ProductApi> CreateProductApiAsync() => ProductApi.CreateAsync(Playwright, Config.BaseUrl);
+
+    /// <summary>
+    /// A new random user, not yet on the site (for a test that signs up through the UI). It is deleted after
+    /// the test if the test created it and did not delete it.
+    /// </summary>
+    protected User NewTestUser()
+    {
+        var user = TestData.RandomUser();
+        _testUsers.Add(user);
+        return user;
+    }
+
+    /// <summary>A new random user, already created on the site through the API. It is deleted after the test.</summary>
+    protected async Task<User> CreateTestUserViaApiAsync()
+    {
+        var user = NewTestUser(); // registered for cleanup first, so a half-finished create is still cleaned up
+        await using var api = await CreateAccountApiAsync();
+        await api.CreateAccountAsync(user);
+        return user;
+    }
+
     [SetUp]
     public async Task SetUpPage()
     {
-        _diagnostics.Clear(); // one instance serves every test of a class, so start each test empty
+        // One instance serves every test of a class, so start each test empty.
+        _diagnostics.Clear();
+        _testUsers.Clear();
 
         Page.SetDefaultTimeout(Config.ActionTimeoutMs);
         Page.SetDefaultNavigationTimeout(Config.ActionTimeoutMs);
@@ -77,8 +105,55 @@ public abstract class BaseTest : PageTest
         Page.PageError += (_, e) => _diagnostics.Add($"{Stamp()} PAGE ERROR {e}");
     }
 
+    /// <summary>One teardown, so the order is fixed: evidence first (while the page still shows the failure),
+    /// then the test users are removed, even if collecting evidence failed.</summary>
     [TearDown]
-    public async Task CollectEvidence()
+    public async Task TearDownTest()
+    {
+        try
+        {
+            await CollectEvidenceAsync();
+        }
+        finally
+        {
+            await DeleteTestUsersAsync();
+        }
+    }
+
+    /// <summary>
+    /// Deletes this test's users through the API. "Account not found" is fine: the test already deleted the user
+    /// in the UI, or never got as far as creating it. A failure here is logged, not thrown, so it never replaces
+    /// the test's own result.
+    /// </summary>
+    private async Task DeleteTestUsersAsync()
+    {
+        if (_testUsers.Count == 0) return;
+        try
+        {
+            await using var api = await CreateAccountApiAsync();
+            foreach (var user in _testUsers)
+            {
+                try
+                {
+                    await api.DeleteAccountAsync(user, allowMissing: true);
+                }
+                catch (Exception ex)
+                {
+                    TestContext.Out.WriteLine($"Cleanup failed, account {user.Email} may be left on the site: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            TestContext.Out.WriteLine($"Cleanup failed, could not reach the API: {ex.Message}");
+        }
+        finally
+        {
+            _testUsers.Clear();
+        }
+    }
+
+    private async Task CollectEvidenceAsync()
     {
         // If the browser never started (launch failed), there is nothing to collect and no context to stop;
         // returning here keeps the original setup error visible instead of a NullReferenceException.

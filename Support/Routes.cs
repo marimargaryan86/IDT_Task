@@ -6,4 +6,5 @@ public static class Routes
     public const string Home = "/";
     public const string CreateAccountApi = "/api/createAccount";
     public const string DeleteAccountApi = "/api/deleteAccount";
+    public const string SearchProductApi = "/api/searchProduct";
 }
