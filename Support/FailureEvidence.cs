@@ -7,16 +7,12 @@ namespace IDT_Task.Support;
 /// <summary>
 /// Evidence for one test: a light Playwright trace, plus a log of failed requests, HTTP errors and console errors.
 /// When the test fails, the screenshot, the trace and the log are saved under TestResults/ and attached to the
-/// Allure report; when it passes, the trace is discarded. Page-load retries (see <see cref="RequestRouting"/>) are
-/// reported for every test, so a green run that needed them is visible.
+/// Allure report; when it passes, the trace is discarded.
 /// </summary>
 public sealed class FailureEvidence
 {
-    // Filled from Playwright's event and route callbacks, which can run on other threads.
+    // Filled from Playwright's event callbacks, which can run on other threads.
     private readonly ConcurrentQueue<string> _log = new();
-    private readonly ConcurrentQueue<string> _retries = new();
-
-    public void Retried(string message) => _retries.Enqueue($"{Stamp()} RETRY {message}");
 
     public async Task StartAsync(IBrowserContext context, IPage page)
     {
@@ -27,7 +23,7 @@ public sealed class FailureEvidence
         // Requests blocked on purpose are not reported.
         page.RequestFailed += (_, r) =>
         {
-            if (!RequestRouting.IsBlocked(r.Url))
+            if (!AdBlocking.IsBlocked(r.Url))
                 _log.Enqueue($"{Stamp()} REQUEST FAILED {r.Method} {r.Url} ({r.Failure})");
         };
         page.Response += (_, r) =>
@@ -48,10 +44,6 @@ public sealed class FailureEvidence
         // If the browser never started (launch failed), there is nothing to collect and no context to stop;
         // returning here keeps the original setup error visible instead of a NullReferenceException.
         if (context is null || page is null) return;
-
-        if (!_retries.IsEmpty)
-            TestContext.Out.WriteLine($"Site answered 5xx, page loads retried ({_retries.Count}):{Environment.NewLine}" +
-                                      string.Join(Environment.NewLine, _retries));
 
         var failed = TestContext.CurrentContext.Result.Outcome.Status != NUnit.Framework.Interfaces.TestStatus.Passed;
         if (!failed)

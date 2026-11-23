@@ -5,14 +5,11 @@ namespace IDT_Task.Support;
 
 /// <summary>
 /// Base for the clients of the site's API (<see cref="AccountApi"/>, <see cref="ProductApi"/>). The API answers
-/// HTTP 200 with a JSON body that carries its own "responseCode". A 5xx means the overloaded server refused the
-/// call, so it is retried. The API is only used for test setup, cleanup and expected data, never for the UI
-/// assertions themselves, so a retry never hides a UI failure.
+/// HTTP 200 with a JSON body that carries its own "responseCode". It is used for test setup, cleanup and expected
+/// data, never for the UI assertions themselves.
 /// </summary>
 public abstract class ApiClient : IAsyncDisposable
 {
-    private const int Attempts = 4;
-
     protected ApiClient(IAPIRequestContext api) => Api = api;
 
     protected IAPIRequestContext Api { get; }
@@ -21,42 +18,34 @@ public abstract class ApiClient : IAsyncDisposable
         playwright.APIRequest.NewContextAsync(new() { BaseURL = baseUrl });
 
     /// <summary>
-    /// Sends the call (retrying on 5xx), checks that the JSON "responseCode" is one of
-    /// <paramref name="expectedCodes"/> and returns the JSON body.
+    /// Sends the call, checks that the JSON "responseCode" is one of <paramref name="expectedCodes"/> and returns
+    /// the JSON body. An HTTP 5xx (the site is overloaded) or a body that is not the usual JSON fails with a message
+    /// that says what came back.
     /// </summary>
     protected static async Task<JsonElement> SendAsync(string what, int[] expectedCodes, Func<Task<IAPIResponse>> call)
     {
-        string last = "no response";
-        for (var attempt = 1; attempt <= Attempts; attempt++)
+        var response = await call();
+        var body = await response.TextAsync();
+        if (response.Status >= 500)
+            throw new InvalidOperationException($"API {what}: HTTP {response.Status}, body starts with: {Snippet(body)}");
+
+        JsonElement root;
+        int code;
+        try
         {
-            var response = await call();
-            if (response.Status >= 500)
-            {
-                last = $"HTTP {response.Status}";
-                await Task.Delay(TimeSpan.FromSeconds(2 * attempt)); // back off before the next attempt
-                continue;
-            }
-
-            var body = await response.TextAsync();
-            JsonElement root;
-            int code;
-            try
-            {
-                using var json = JsonDocument.Parse(body);
-                root = json.RootElement.Clone(); // outlives the JsonDocument
-                code = root.GetProperty("responseCode").GetInt32();
-            }
-            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
-            {
-                // Not the JSON the API normally returns (for example an HTML error page): say what came back.
-                throw new InvalidOperationException(
-                    $"API {what}: unexpected response, HTTP {response.Status}, body starts with: {Snippet(body)}", ex);
-            }
-
-            if (expectedCodes.Contains(code)) return root;
-            throw new InvalidOperationException($"API {what} returned responseCode {code}: {Snippet(body)}");
+            using var json = JsonDocument.Parse(body);
+            root = json.RootElement.Clone(); // outlives the JsonDocument
+            code = root.GetProperty("responseCode").GetInt32();
         }
-        throw new InvalidOperationException($"API {what} failed after {Attempts} attempts ({last}).");
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw new InvalidOperationException(
+                $"API {what}: unexpected response, HTTP {response.Status}, body starts with: {Snippet(body)}", ex);
+        }
+
+        return expectedCodes.Contains(code)
+            ? root
+            : throw new InvalidOperationException($"API {what} returned responseCode {code}: {Snippet(body)}");
     }
 
     /// <summary>The first 200 characters of a response body, on one line, for error messages.</summary>

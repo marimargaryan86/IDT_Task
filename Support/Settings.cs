@@ -9,13 +9,11 @@ public sealed class Settings
 {
     public required string BaseUrl { get; init; }
     public required int ActionTimeoutMs { get; init; }
-    public required int RetryAttempts { get; init; }
 
     public static Settings Load() => new()
     {
         BaseUrl = Read("BaseUrl", "IDT_BASE_URL").TrimEnd('/'),
         ActionTimeoutMs = ReadInt("ActionTimeoutMs", "IDT_ACTION_TIMEOUT_MS"),
-        RetryAttempts = ReadInt("RetryAttempts", "IDT_RETRY_ATTEMPTS"),
     };
 
     private static string Read(string parameter, string envVar)

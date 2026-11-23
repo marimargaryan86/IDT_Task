@@ -2,7 +2,7 @@
 <!--
   The single place for run configuration; dotnet test picks it up through IDT_Task.csproj.
   An environment variable overrides a value for one run: BROWSER, HEADED=1 (Playwright's own) and IDT_BASE_URL,
-  IDT_ACTION_TIMEOUT_MS, IDT_RETRY_ATTEMPTS (this project's, see Support/Settings.cs).
+  IDT_ACTION_TIMEOUT_MS (this project's, see Support/Settings.cs).
 -->
 <RunSettings>
 
@@ -32,8 +32,6 @@
     <Parameter name="BaseUrl" value="https://automationexercise.com" />
     <!-- Timeout for actions and navigation (click, fill, goto), in ms -->
     <Parameter name="ActionTimeoutMs" value="30000" />
-    <!-- A page load (GET) that answers 5xx is sent again up to this many times. 0 = off. See the README. -->
-    <Parameter name="RetryAttempts" value="2" />
   </TestRunParameters>
 
 </RunSettings>

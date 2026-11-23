@@ -5,9 +5,8 @@ using Microsoft.Playwright.NUnit;
 namespace IDT_Task.Support;
 
 /// <summary>
-/// Setup and teardown for every test; the work is done by <see cref="RequestRouting"/> (ad blocking, page-load
-/// retry), <see cref="FailureEvidence"/> (trace, screenshot, log) and <see cref="TestUsers"/> (users the test
-/// created, deleted afterwards). [AllureNUnit] here applies to every class that inherits it.
+/// Setup and teardown for every test; the work is done by <see cref="AdBlocking"/>, <see cref="FailureEvidence"/>
+/// (trace, screenshot, log) and <see cref="TestUsers"/> (users the test created, deleted afterwards). [AllureNUnit] here applies to every class that inherits it.
 /// </summary>
 [AllureNUnit]
 public abstract class BaseTest : PageTest
@@ -44,7 +43,7 @@ public abstract class BaseTest : PageTest
         Page.SetDefaultNavigationTimeout(Config.ActionTimeoutMs);
 
         await _evidence.StartAsync(Context, Page);
-        await new RequestRouting(Config, _evidence.Retried).InstallAsync(Context);
+        await AdBlocking.InstallAsync(Context);
     }
 
     /// <summary>One teardown, so the order is fixed: evidence first (the page still shows the failure), then the
