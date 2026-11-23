@@ -1,5 +1,7 @@
 # IDT_Task
 
+[![Tests](https://github.com/marimargaryan86/IDT_Task/actions/workflows/tests.yml/badge.svg)](https://github.com/marimargaryan86/IDT_Task/actions/workflows/tests.yml)
+
 Playwright (C#) + NUnit suite for http://automationexercise.com, built with the Page Object Model.
 
 ## Quick start
