@@ -37,7 +37,6 @@ for that: repository Settings, Pages, Source: GitHub Actions.
   same way every time, at the same step. The run on GitHub can be repeated with **Re-run failed jobs**.
 - **What is retried:** only the API calls that create and delete test users (`Support/AccountApi.cs`, on 5xx).
   Page loads and assertions are never retried, so a failing assertion is never hidden.
-- **Firefox does not start** on the macOS 27 machine this was built on (see [Browsers](#browsers)).
 
 ## Scenarios
 The four assigned cases from https://automationexercise.com/test_cases, one test each, following the site's
@@ -127,11 +126,13 @@ report shows only the latest run. To report on an existing results folder:
   both as failures.
 
 ## Browsers
-| Browser | Command | Status (macOS 27, Playwright 1.48) |
-|---------|---------|------------------------------------|
-| Chromium (bundled; the engine of Chrome and Edge) | `dotnet test` | works |
-| WebKit (the engine Safari is built on) | `BROWSER=webkit dotnet test` | works |
-| Firefox | `BROWSER=firefox dotnet test` | **does not start**: launch times out after 60 s |
+All three browsers run the full suite (Playwright 1.65, checked on macOS 27 / Apple silicon):
+
+| Browser | Version bundled with Playwright 1.65 | Command |
+|---------|--------------------------------------|---------|
+| Chromium (the engine of Chrome and Edge) | 159 | `dotnet test` |
+| WebKit (the engine Safari is built on) | 27.2 | `BROWSER=webkit dotnet test` |
+| Firefox | 159 | `BROWSER=firefox dotnet test` |
 
 Playwright cannot drive the real Safari app. WebKit is its own patched build of Safari's engine, the closest
 equivalent. Chrome and Edge are not run separately: they use the same engine as the bundled Chromium.
@@ -142,7 +143,7 @@ cd bin/Debug/net10.0/.playwright && ./node/darwin-arm64/node package/cli.js inst
 ```
 Run several browsers and print a summary table:
 ```bash
-./run-all-browsers.sh                  # chromium and webkit
+./run-all-browsers.sh                  # chromium, webkit and firefox
 ./run-all-browsers.sh webkit firefox   # only the named ones
 ```
 Site 503s can fail a random test in any browser (see [Known limitations](#known-limitations)). Read the failure
