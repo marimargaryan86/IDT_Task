@@ -2,6 +2,22 @@
 
 Playwright (C#) + NUnit suite for http://automationexercise.com, built with the Page Object Model.
 
+## Quick start
+Needs the .NET 10 SDK.
+```bash
+dotnet build
+pwsh bin/Debug/net10.0/playwright.ps1 install chromium   # one time; no pwsh? see "Run" below
+dotnet test
+```
+All four tests run headless, one after another. Other ways to run them (one test, watch the browser, parallel,
+another browser, Allure report) are in the sections below.
+
+## Continuous integration
+`.github/workflows/tests.yml` builds the project and runs the tests on every push to `main`, on every pull
+request, and on demand from the Actions tab. It uploads the Allure results and the failure screenshots and
+traces as the `test-evidence` artifact, also when the tests fail. The site is public and sometimes answers
+HTTP 503, so a red run is not always a code problem: read the evidence first.
+
 ## Scenarios
 The four assigned cases from https://automationexercise.com/test_cases, one test each, following the site's
 steps. In the Allure report each test is named after its case.
@@ -31,7 +47,6 @@ page. If one ever blocks a click, the failure screenshot and trace show it; hand
 test against.
 
 ## Run
-Requires the .NET 10 SDK.
 ```bash
 dotnet build
 
