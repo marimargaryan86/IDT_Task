@@ -15,8 +15,27 @@ another browser, Allure report) are in the sections below.
 ## Continuous integration
 `.github/workflows/tests.yml` builds the project and runs the tests on every push to `main`, on every pull
 request, and on demand from the Actions tab. It uploads the Allure results and the failure screenshots and
-traces as the `test-evidence` artifact, also when the tests fail. The site is public and sometimes answers
-HTTP 503, so a red run is not always a code problem: read the evidence first.
+traces as the `test-evidence` artifact, also when the tests fail. A red run is not always a code problem: see
+[Known limitations](#known-limitations).
+
+**Run it by hand:** Actions tab, then **Tests**, then **Run workflow**. Choose the branch and, if you want, the
+browser (chromium, webkit or firefox) and the number of parallel workers (`1` = sequential, the default). Pushes
+and pull requests always run Chromium, sequentially.
+
+**Read the result:** open the run. Green means every test passed. After a failure, download the `test-evidence`
+artifact for the screenshots and traces. The Allure report of a run on `main` is published at
+https://marimargaryan86.github.io/IDT_Task/ (also linked as **View deployment** on the run page). One-time setup
+for that: repository Settings, Pages, Source: GitHub Actions.
+
+## Known limitations
+- **The site is not always available.** automationexercise.com is a public practice site that sometimes answers
+  HTTP 503 (seen on `delete_account`, on search and on product pictures), more often under load. The test then
+  times out waiting for a page, and the output shows an `HTTP 503` line next to the failure screenshot and trace.
+- **How to tell it from a real defect:** re-run. A site hiccup passes on the next run; a real defect fails the
+  same way every time, at the same step. The run on GitHub can be repeated with **Re-run failed jobs**.
+- **What is retried:** only the API calls that create and delete test users (`Support/AccountApi.cs`, on 5xx).
+  Page loads and assertions are never retried, so a failing assertion is never hidden.
+- **Firefox does not start** on the macOS 27 machine this was built on (see [Browsers](#browsers)).
 
 ## Scenarios
 The four assigned cases from https://automationexercise.com/test_cases, one test each, following the site's
@@ -78,8 +97,8 @@ sequential). Override it for one run, or change the value in the file to make it
 dotnet test -- NUnit.NumberOfTestWorkers=4
 ```
 With 4 workers the run takes about as long as the slowest test (Place Order), instead of the sum of all
-four. The site returns HTTP 503 under load, so a busy moment can fail a
-test in either mode; read the failure evidence before blaming parallelism. Tests of one class never overlap
+four. A busy moment on the site can fail a test in either mode (see
+[Known limitations](#known-limitations)); read the failure evidence before blaming parallelism. Tests of one class never overlap
 because `BaseTest` keeps per-test state in instance fields.
 
 ## Reporting (Allure)
@@ -124,8 +143,8 @@ Run several browsers and print a summary table:
 ./run-all-browsers.sh                  # chromium and webkit
 ./run-all-browsers.sh webkit firefox   # only the named ones
 ```
-The site returns HTTP 503 under load, which fails random tests in any browser. Read the failure output (screenshot,
-trace and console log in the Allure report) before blaming a browser.
+Site 503s can fail a random test in any browser (see [Known limitations](#known-limitations)). Read the failure
+output (screenshot, trace and console log in the Allure report) before blaming a browser.
 
 ## Configuration
 `dotnet test` reads `.runsettings` automatically (set in the csproj). **`.runsettings` is the single place

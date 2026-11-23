@@ -4,7 +4,19 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual run (Actions tab -> Tests -> Run workflow). Pushes and pull requests always use the defaults below:
+  # Chromium, one worker (sequential).
   workflow_dispatch:
+    inputs:
+      browser:
+        description: Browser to test in
+        type: choice
+        options: [chromium, webkit, firefox]
+        default: chromium
+      workers:
+        description: Parallel workers (1 = sequential; the site gets flaky under load)
+        type: string
+        default: "1"
 
 # Needed to publish the Allure report to GitHub Pages.
 permissions:
@@ -29,12 +41,19 @@ jobs:
 
       # Playwright downloads its own browser; --with-deps adds the Linux system libraries it needs.
       - name: Install Playwright browser
-        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+        env:
+          BROWSER: ${{ inputs.browser || 'chromium' }}
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps "$BROWSER"
 
       # Settings come from .runsettings (headless, sequential). The site is public and sometimes answers
       # HTTP 503, so a red run is not always a code problem: read the failure evidence first.
       - name: Run tests
-        run: dotnet test --no-build --configuration Debug
+        env:
+          BROWSER: ${{ inputs.browser || 'chromium' }}
+          WORKERS: ${{ inputs.workers || '1' }}
+        run: |
+          [[ "$WORKERS" =~ ^[1-9][0-9]*$ ]] || { echo "workers must be a positive number, got '$WORKERS'"; exit 1; }
+          dotnet test --no-build --configuration Debug -- NUnit.NumberOfTestWorkers="$WORKERS"
 
       # Allure results, plus screenshots and traces of failed tests. Kept even when the tests fail.
       - name: Upload test evidence
