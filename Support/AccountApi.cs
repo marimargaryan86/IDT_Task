@@ -62,12 +62,30 @@ public class AccountApi : IAsyncDisposable
             }
 
             var body = await response.TextAsync();
-            using var json = JsonDocument.Parse(body);
-            var code = json.RootElement.GetProperty("responseCode").GetInt32();
+            int code;
+            try
+            {
+                using var json = JsonDocument.Parse(body);
+                code = json.RootElement.GetProperty("responseCode").GetInt32();
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+            {
+                // Not the JSON the API normally returns (for example an HTML error page): say what came back.
+                throw new InvalidOperationException(
+                    $"API {what}: unexpected response, HTTP {response.Status}, body starts with: {Snippet(body)}", ex);
+            }
+
             if (expectedCodes.Contains(code)) return;
             throw new InvalidOperationException($"API {what} returned responseCode {code}: {body}");
         }
         throw new InvalidOperationException($"API {what} failed after {Attempts} attempts ({last}).");
+    }
+
+    /// <summary>The first 200 characters of a response body, on one line, for error messages.</summary>
+    private static string Snippet(string body)
+    {
+        var oneLine = string.Join(' ', body.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return oneLine.Length <= 200 ? $"\"{oneLine}\"" : $"\"{oneLine[..200]}...\"";
     }
 
     public async ValueTask DisposeAsync() => await _api.DisposeAsync();

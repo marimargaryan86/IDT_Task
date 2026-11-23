@@ -11,7 +11,8 @@ public class HeaderComponent
 
     public HeaderComponent(IPage page) => _page = page;
 
-    public ILocator LoggedInAs => _page.Locator("a:has-text('Logged in as')");
+    // The link has no href and no data-qa on the site, so it is found by its text, inside the header only.
+    public ILocator LoggedInAs => _page.Locator("header a:has-text('Logged in as')");
 
     private ILocator SignupLoginLink => _page.Locator("header a[href='/login']");
     private ILocator ProductsLink => _page.Locator("header a[href='/products']");

@@ -9,6 +9,7 @@ public class PaymentPage : BasePage
     public PaymentPage(IPage page) : base(page) { }
 
     public ILocator OrderPlaced => Page.Locator("[data-qa='order-placed']");
+    public ILocator OrderConfirmation => Page.GetByText("Congratulations! Your order has been confirmed!");
 
     private ILocator NameOnCard => Page.Locator("[data-qa='name-on-card']");
     private ILocator CardNumber => Page.Locator("[data-qa='card-number']");

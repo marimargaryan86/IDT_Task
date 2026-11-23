@@ -23,8 +23,16 @@ public class RegisterUserTests : BaseTest
         {
             // Safety net: if the UI delete failed (or the test stopped early), remove the account through
             // the API. "Account not found" is fine: it means the UI already deleted it or it was never created.
-            await using var api = await CreateAccountApiAsync();
-            await api.DeleteAccountAsync(user, allowMissing: true);
+            // A cleanup failure is logged, not thrown: throwing here would replace the scenario's own exception.
+            try
+            {
+                await using var api = await CreateAccountApiAsync();
+                await api.DeleteAccountAsync(user, allowMissing: true);
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"Cleanup failed, account {user.Email} may be left on the site: {ex.Message}");
+            }
         }
     }
 

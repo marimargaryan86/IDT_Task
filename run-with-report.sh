@@ -8,16 +8,19 @@
 set -u
 cd "$(dirname "$0")"
 
-RESULTS=bin/Debug/net9.0/allure-results
 REPORT=allure-report
 
-rm -rf "$RESULTS" "$REPORT"
+# Allure writes next to the built dll: bin/<configuration>/<framework>/allure-results. Rather than hard-code
+# the configuration (Debug/Release) and framework (net10.0), delete every old results folder before the run
+# and use the one the run creates.
+rm -rf bin/*/*/allure-results "$REPORT"
 
 dotnet test "$@"
 status=$?
 
-if [ ! -d "$RESULTS" ] || [ -z "$(ls -A "$RESULTS" 2>/dev/null)" ]; then
-  echo "No Allure results were written to $RESULTS (did the tests start?)." >&2
+RESULTS=$(ls -d bin/*/*/allure-results 2>/dev/null | head -1)
+if [ -z "$RESULTS" ] || [ -z "$(ls -A "$RESULTS" 2>/dev/null)" ]; then
+  echo "No Allure results were written under bin/*/*/allure-results (did the tests start?)." >&2
   exit "${status:-1}"
 fi
 

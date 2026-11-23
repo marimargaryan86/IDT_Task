@@ -17,7 +17,7 @@
     <ExpectTimeout>10000</ExpectTimeout>
     <LaunchOptions>
       <!-- true = no browser window. HEADED=1 shows the browser for one run. -->
-      <Headless>true</Headless>
+      <Headless>false</Headless>
       <!-- Slow every action down by this many ms, for watching a run. 0 = off. -->
       <SlowMo>0</SlowMo>
       <!-- Fail fast if the browser does not start (Playwright's default is 180000) -->
@@ -26,9 +26,11 @@
   </Playwright>
 
   <!-- Read by NUnit. How many test classes run at the same time (see Support/AssemblyConfig.cs).
-       1 = sequential. The site returns 503 under load, so more workers can mean more flaky failures. -->
+       1 = sequential (default). More than 1 runs test classes in parallel: faster, but the site returns 503
+       under load, so more workers can mean more flaky failures. To override for one run, add
+       NUnit.NumberOfTestWorkers=4 to the dotnet test command line after a double dash (see the README). -->
   <NUnit>
-    <NumberOfTestWorkers>4</NumberOfTestWorkers>
+    <NumberOfTestWorkers>1</NumberOfTestWorkers>
   </NUnit>
 
   <!-- Read by this project (Support/Settings.cs). -->

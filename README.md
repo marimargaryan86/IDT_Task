@@ -22,46 +22,45 @@ ends by deleting the account in the UI) and deletes it through the API only if t
 - `Components/`: `HeaderComponent`, `FooterComponent`, shared by every page through `BasePage`.
 - `Tests/`: steps and assertions.
 - `Support/`: `BaseTest` (setup, ad blocking, failure evidence), `Settings` (configuration), `TestData`,
-  `Routes`, `AccountApi` (create/delete users through the site's API, with retry on 5xx), `AdOverlay`
-  (removes a Google vignette ad if one gets past the request blocking).
+  `Routes`, `AccountApi` (create/delete users through the site's API, with retry on 5xx).
 
 ### Ads
 The site shows ads that can cover the page. `BaseTest` blocks ad and tracker requests first (turn off with
-`IDT_BLOCK_ADS=false`). `AdOverlay` is the second line of defence: a Playwright locator handler that removes
-the full-screen vignette ad, and its `#google_vignette` address suffix, when it would block a click. No run on
-the real site has shown the overlay, so the handler has only been checked once against a fake overlay (a
-throwaway test, since removed) and never against a real Google ad. If an ad ever blocks a click and is not
-removed, check the selectors in `Support/AdOverlay.cs` first.
+`IDT_BLOCK_ADS=false`). There is no other ad handling: no run on the real site has shown an ad covering the
+page. If one ever blocks a click, the failure screenshot and trace show it; handle it then, with the real ad to
+test against.
 
 ## Run
+Requires the .NET 10 SDK.
 ```bash
 dotnet build
 
-dotnet test                                   # uses .runsettings (headless, 4 parallel workers)
+dotnet test                                   # uses .runsettings (headless, sequential)
 HEADED=1 dotnet test                          # watch it run
 dotnet test --filter "Name=TC09_SearchProduct"   # one test
 ```
 
 One-time browser install, after `dotnet build`. Any OS, with PowerShell (`pwsh`):
 ```bash
-pwsh bin/Debug/net9.0/playwright.ps1 install chromium
+pwsh bin/Debug/net10.0/playwright.ps1 install chromium
 ```
 macOS (Apple silicon) without PowerShell, using the Node bundled with Playwright:
 ```bash
-cd bin/Debug/net9.0/.playwright && ./node/darwin-arm64/node package/cli.js install chromium && cd -
+cd bin/Debug/net10.0/.playwright && ./node/darwin-arm64/node package/cli.js install chromium && cd -
 ```
 On other machines without PowerShell, use the `node/<platform>` folder that matches yours (for example
 `linux-x64` or `win32_x64`).
-Failure screenshots and traces go to `TestResults/` (next to the built dll, under `bin/Debug/net9.0/`).
+Failure screenshots and traces go to `TestResults/` (next to the built dll, under `bin/Debug/net10.0/`).
 Open a trace with `show-trace` from the same bundled CLI.
 
 ## Parallel execution
-Test classes run at the same time; the tests inside one class run one after another
+By default the tests run one after another. Parallel execution is switched on by raising the number of workers:
+then test classes run at the same time and the tests inside one class still run one after another
 (`Support/AssemblyConfig.cs`). Each test creates its own random user and its own browser context, so they do
-not share data. The number of parallel workers is `NumberOfTestWorkers` in `.runsettings` (default 4;
-`1` = sequential). Override it for one run:
+not share data. The number of parallel workers is `NumberOfTestWorkers` in `.runsettings` (default `1` =
+sequential). Override it for one run, or change the value in the file to make it permanent:
 ```bash
-dotnet test -- NUnit.NumberOfTestWorkers=1
+dotnet test -- NUnit.NumberOfTestWorkers=4
 ```
 With 4 workers the run takes about as long as the slowest test (Place Order), instead of the sum of all
 four. The site returns HTTP 503 under load, so a busy moment can fail a
@@ -69,7 +68,7 @@ test in either mode; read the failure evidence before blaming parallelism. Tests
 because `BaseTest` keeps per-test state in instance fields.
 
 ## Reporting (Allure)
-Every run writes Allure results to `bin/Debug/net9.0/allure-results` (set in `allureConfig.json`). Build and
+Every run writes Allure results to `bin/Debug/net10.0/allure-results` (set in `allureConfig.json`). Build and
 open the HTML report with:
 ```bash
 ./run-with-report.sh                      # run all tests, then open the report
@@ -78,7 +77,7 @@ NO_OPEN=1 ./run-with-report.sh            # build the report only (allure-report
 ```
 It needs the Allure command-line tool and Java (`brew install allure`). It deletes old results first, so the
 report shows only the latest run. To report on an existing results folder:
-`allure generate bin/Debug/net9.0/allure-results -o allure-report --clean`.
+`allure generate bin/Debug/net10.0/allure-results -o allure-report --clean`.
 
 - **Steps:** every page-object action and the API setup calls are Allure steps, added with
   `[AllureStep("...")]` (`Allure.Net.Commons.Attributes`). Put the attribute on a new page method to make it a
@@ -103,7 +102,7 @@ equivalent. Chrome and Edge are not run separately: they use the same engine as 
 
 Install the browsers once (WebKit and Firefox are about 230 MB each):
 ```bash
-cd bin/Debug/net9.0/.playwright && ./node/darwin-arm64/node package/cli.js install chromium webkit firefox && cd -
+cd bin/Debug/net10.0/.playwright && ./node/darwin-arm64/node package/cli.js install chromium webkit firefox && cd -
 ```
 Run several browsers and print a summary table:
 ```bash

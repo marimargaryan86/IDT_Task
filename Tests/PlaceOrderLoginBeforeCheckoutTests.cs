@@ -26,7 +26,15 @@ public class PlaceOrderLoginBeforeCheckoutTests : BaseTest
         {
             // Safety net: the scenario deletes the account through the UI. If it failed before that, remove it
             // through the API. "Account not found" is fine: the UI already deleted it.
-            await api.DeleteAccountAsync(user, allowMissing: true);
+            // A cleanup failure is logged, not thrown: throwing here would replace the scenario's own exception.
+            try
+            {
+                await api.DeleteAccountAsync(user, allowMissing: true);
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"Cleanup failed, account {user.Email} may be left on the site: {ex.Message}");
+            }
         }
     }
 
@@ -48,6 +56,7 @@ public class PlaceOrderLoginBeforeCheckoutTests : BaseTest
         var cart = await products.Header.ClickCartAsync();
         await Expect(cart.ShoppingCartBreadcrumb).ToBeVisibleAsync();
         await Expect(cart.CartRows).ToHaveCountAsync(TestData.ProductsToOrder);
+        await Expect(cart.CartProductNames).ToHaveTextAsync(products.AddedProductNames); // the products we added
 
         // Checkout
         var checkout = await cart.ProceedToCheckoutAsync();
@@ -59,6 +68,7 @@ public class PlaceOrderLoginBeforeCheckoutTests : BaseTest
         var payment = await checkout.PlaceOrderAsync();
         await payment.PayAsync();
         await Expect(payment.OrderPlaced).ToBeVisibleAsync();
+        await Expect(payment.OrderConfirmation).ToBeVisibleAsync();
 
         // Delete the account through the UI
         var deleted = await payment.Header.ClickDeleteAccountAsync();

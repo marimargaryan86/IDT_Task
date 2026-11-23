@@ -19,6 +19,9 @@ public class SearchProductTests : BaseTest
         var products = await home.Header.ClickProductsAsync();
         await Expect(products.AllProductsHeading).ToBeVisibleAsync();
 
+        await Expect(products.ProductCards.First).ToBeVisibleAsync();
+        var allProducts = await products.ProductCards.CountAsync();
+
         products = await products.SearchAsync(TestData.SearchTerm);
         await Expect(products.SearchedProductsHeading).ToBeVisibleAsync();
 
@@ -26,6 +29,7 @@ public class SearchProductTests : BaseTest
         // visible. The site matches on name or category, so the names are not checked against the term.
         await Expect(products.ProductCards.First).ToBeVisibleAsync();
         var count = await products.ProductCards.CountAsync();
+        Assert.That(count, Is.LessThan(allProducts), "the search should narrow the product list");
         for (var i = 0; i < count; i++)
         {
             await Expect(products.ProductCards.Nth(i)).ToBeVisibleAsync();

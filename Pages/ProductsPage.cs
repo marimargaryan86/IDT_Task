@@ -12,6 +12,9 @@ public class ProductsPage : BasePage
     public ILocator ProductCards => Page.Locator(".features_items .product-image-wrapper");
 
     // The site has no data-qa on this page: ids first, then CSS classes.
+    /// <summary>Names of the products added by <see cref="AddProductsToCartAsync"/>, in the order added.</summary>
+    public List<string> AddedProductNames { get; } = new();
+
     private ILocator SearchInput => Page.Locator("#search_product");
     private ILocator SearchButton => Page.Locator("#submit_search");
     private ILocator AddToCartOnHover(ILocator card) => card.Locator(".product-overlay a.add-to-cart");
@@ -38,6 +41,7 @@ public class ProductsPage : BasePage
         for (var i = 0; i < count; i++)
         {
             var card = ProductCards.Nth(i);
+            AddedProductNames.Add((await card.Locator(".productinfo p").First.InnerTextAsync()).Trim());
             await card.HoverAsync();
             await AddToCartOnHover(card).ClickAsync();
             await ContinueShoppingButton.ClickAsync();

@@ -1,15 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <RootNamespace>IDT_Task</RootNamespace>
     <RunSettingsFilePath>$(MSBuildProjectDirectory)/.runsettings</RunSettingsFilePath>
-    <!-- Tests target net9.0. Run on .NET 10 only when no .NET 9 runtime is installed (Rider's default
-         dotnet has only .NET 10; without this its test runner fails to start with exit code 150). -->
-    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <ItemGroup>

@@ -43,13 +43,12 @@ public abstract class BaseTest : PageTest
         Page.SetDefaultTimeout(Config.ActionTimeoutMs);
         Page.SetDefaultNavigationTimeout(Config.ActionTimeoutMs);
 
-        await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        // Light tracing: screenshots, actions and network only. Snapshots (page DOM) and Sources (test code) are
+        // off to keep tracing cheap on every test, including the ones that pass and are discarded.
+        await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = false, Sources = false });
 
         if (Config.BlockAds)
         {
-            // Second line of defence: if a vignette ad gets through anyway, remove it when it blocks a click.
-            await AdOverlay.InstallAsync(Page);
-
             await Context.RouteAsync("**/*", async route =>
             {
                 if (IsBlocked(route.Request.Url))
