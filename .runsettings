@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Default run configuration. dotnet test picks this file up automatically (see IDT_Task.csproj).
-  This file is the single place for every value. An environment variable overrides a value for one run.
-  The TestRunParameters have no defaults in code: a missing one stops the run with a message naming it.
-  Environment variables: BROWSER, HEADED (Playwright's own), and IDT_BASE_URL, IDT_VIEWPORT_WIDTH,
-  IDT_VIEWPORT_HEIGHT, IDT_ACTION_TIMEOUT_MS, IDT_BLOCK_ADS (this project's).
+  The single place for run configuration; dotnet test picks it up through IDT_Task.csproj.
+  An environment variable overrides a value for one run: BROWSER, HEADED=1 (Playwright's own) and IDT_BASE_URL,
+  IDT_ACTION_TIMEOUT_MS, IDT_RETRY_ATTEMPTS (this project's, see Support/Settings.cs).
 -->
 <RunSettings>
 
   <!-- Read by Playwright's NUnit package. -->
   <Playwright>
-    <!-- chromium | firefox | webkit. BROWSER=<name> overrides this. Chromium is the same engine as
-         Chrome and Edge. -->
+    <!-- chromium | firefox | webkit (Chromium is the engine of Chrome and Edge). BROWSER=<name> overrides it. -->
     <BrowserName>chromium</BrowserName>
     <!-- Timeout for Expect(...) assertions, in ms -->
     <ExpectTimeout>10000</ExpectTimeout>
@@ -25,23 +22,18 @@
     </LaunchOptions>
   </Playwright>
 
-  <!-- Read by NUnit. How many test classes run at the same time (see Support/AssemblyConfig.cs).
-       1 = sequential (default). More than 1 runs test classes in parallel: faster, but the site returns 503
-       under load, so more workers can mean more flaky failures. To override for one run, add
-       NUnit.NumberOfTestWorkers=4 to the dotnet test command line after a double dash (see the README). -->
+  <!-- How many test classes run at the same time. 1 = sequential. More is faster but the site answers 503 more
+       often under load. For one run, pass NUnit.NumberOfTestWorkers=4 after a double dash (see the README). -->
   <NUnit>
     <NumberOfTestWorkers>1</NumberOfTestWorkers>
   </NUnit>
 
-  <!-- Read by this project (Support/Settings.cs). -->
   <TestRunParameters>
     <Parameter name="BaseUrl" value="https://automationexercise.com" />
-    <Parameter name="ViewportWidth" value="1440" />
-    <Parameter name="ViewportHeight" value="900" />
     <!-- Timeout for actions and navigation (click, fill, goto), in ms -->
     <Parameter name="ActionTimeoutMs" value="30000" />
-    <!-- Abort ad and tracker requests; the site's ads can cover the page -->
-    <Parameter name="BlockAds" value="true" />
+    <!-- A page load (GET) that answers 5xx is sent again up to this many times. 0 = off. See the README. -->
+    <Parameter name="RetryAttempts" value="2" />
   </TestRunParameters>
 
 </RunSettings>
