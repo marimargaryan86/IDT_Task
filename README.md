@@ -37,9 +37,9 @@ In the Allure report each test is named after its case.
   lead to another page return that page.
 - `Components/`: `HeaderComponent`, `FooterComponent`, shared by every page through `BasePage`.
 - `Tests/`: steps and assertions.
-- `Support/`: `BaseTest` (setup and teardown) and its helpers `AdBlocking`, `FailureEvidence` (trace,
-  screenshot, log) and `TestUsers`; `Settings`, `TestData`, `Routes`; the API layer (`ApiClient`, `AccountApi`,
-  `ProductApi`).
+- `Support/`: `BaseTest` (setup and teardown) and its helpers `RequestRouting` (ad blocking, page-load retry),
+  `FailureEvidence` (trace, screenshot, log) and `TestUsers`; `Settings`, `TestData`, `Routes`; the API layer
+  (`ApiClient` with retry on 5xx, `AccountApi`, `ProductApi`).
 
 ## Run
 ```bash
@@ -54,10 +54,10 @@ Chromium is the engine of Chrome and Edge; WebKit is Safari's engine (Playwright
 Install WebKit and Firefox once the same way as Chromium (`install chromium webkit firefox`).
 
 ## Configuration
-`.runsettings` is the single place for values (browser, headless, timeouts, parallel workers, base URL); each
+`.runsettings` is the single place for values (browser, headless, timeouts, parallel workers, base URL, retries); each
 has a comment there. `dotnet test` picks it up through the csproj; in an IDE, select it as the run settings file.
 An environment variable overrides a value for one run: `BROWSER`, `HEADED=1`, `IDT_BASE_URL`,
-`IDT_ACTION_TIMEOUT_MS`. Values have no defaults in code: a missing one stops the run with a
+`IDT_ACTION_TIMEOUT_MS`, `IDT_RETRY_ATTEMPTS`. Values have no defaults in code: a missing one stops the run with a
 message naming it. The viewport (1440 x 900) and ad blocking are fixed in the code. There are no secrets here (public
 site, random users); if one is ever needed, read it from an environment variable, never from `.runsettings`.
 ```bash
@@ -85,13 +85,10 @@ published at https://marimargaryan86.github.io/IDT_Task/ (one-time setup: Settin
 - **The site is not always available.** It is a public practice site that sometimes answers HTTP 503, more often
   under load (seen on pages, search and product pictures). The output then shows an `HTTP 503` line next to the
   failure screenshot and trace. A site hiccup passes on a re-run; a real defect fails the same way every time.
-- **No retries, on purpose.** Neither requests nor tests are retried, so a 503 shows up as a failure with its
-  evidence and nothing is hidden. To tell a site hiccup from a defect, re-run: a hiccup passes on the next run, a
-  defect fails the same way at the same step. On GitHub use **Re-run failed jobs**.
-- **If the instability had to be absorbed,** the options would be: NUnit's `[Retry(2)]` on the tests (simple, covers
-  the form posts, re-runs the whole test and hides which request failed); or a retry of page loads (GET) that answer
-  5xx in a Playwright route (more precise, more code, and form posts such as sign-up and payment stay unprotected
-  because repeating them could create twice). A 503 on the sign-up form post (`POST /signup`) is the failure seen
-  most often (test case 1).
+- **Retried on 5xx:** GET page loads of the site, up to `RetryAttempts` times (2); the browser only gets the final
+  answer. Every retry is logged ("RETRY GET ...") in the test output and the Allure Console Output, also when the
+  test passes. `IDT_RETRY_ATTEMPTS=0` turns it off. The site's API calls are retried too (`ApiClient`).
+- **Never retried:** forms (POST: sign-up, login, payment), scripts, images, assertions and whole tests, so a wrong
+  result fails at once.
 - **Ads:** ad and tracker requests are blocked first. No run has shown an ad covering the page; if one ever blocks a
   click, the failure screenshot and trace show it, and it can be handled then with the real ad to test against.
