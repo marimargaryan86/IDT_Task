@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build --configuration Debug
+
+      # Playwright downloads its own browser; --with-deps adds the Linux system libraries it needs.
+      - name: Install Playwright browser
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+
+      # Settings come from .runsettings (headless, sequential). The site is public and sometimes answers
+      # HTTP 503, so a red run is not always a code problem: read the failure evidence first.
+      - name: Run tests
+        run: dotnet test --no-build --configuration Debug
+
+      # Allure results, plus screenshots and traces of failed tests. Kept even when the tests fail.
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence
+          path: |
+            bin/Debug/net10.0/allure-results
+            bin/Debug/net10.0/TestResults
+          if-no-files-found: ignore
+          retention-days: 14
