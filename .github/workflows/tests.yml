@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Needed to publish the Allure report to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -41,3 +47,39 @@ jobs:
             bin/Debug/net10.0/TestResults
           if-no-files-found: ignore
           retention-days: 14
+
+      # Build the HTML report from the results (also when tests failed) and stage it for GitHub Pages.
+      - uses: actions/setup-java@v4
+        if: always()
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build Allure report
+        if: always()
+        run: |
+          if [ -d bin/Debug/net10.0/allure-results ]; then
+            npm install --global allure-commandline@2.32.0
+            allure generate bin/Debug/net10.0/allure-results -o allure-report --clean
+          else
+            echo "No Allure results, no report."
+          fi
+
+      - name: Stage report for GitHub Pages
+        if: always() && hashFiles('allure-report/index.html') != ''
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report
+
+  # Publishes the report at https://<user>.github.io/IDT_Task/ (only for pushes to main, not pull requests).
+  # One-time setup: repository Settings -> Pages -> Source: GitHub Actions.
+  publish-report:
+    needs: test
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
