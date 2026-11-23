@@ -17,7 +17,7 @@
     <ExpectTimeout>10000</ExpectTimeout>
     <LaunchOptions>
       <!-- true = no browser window. HEADED=1 shows the browser for one run. -->
-      <Headless>false</Headless>
+      <Headless>true</Headless>
       <!-- Slow every action down by this many ms, for watching a run. 0 = off. -->
       <SlowMo>0</SlowMo>
       <!-- Fail fast if the browser does not start (Playwright's default is 180000) -->
